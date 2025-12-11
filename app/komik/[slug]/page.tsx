@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getComicDetail } from "@/lib/scraper"
 
+export const runtime = 'edge'
+
 interface Props {
   params: Promise<{ slug: string }>
 }

@@ -2,6 +2,8 @@ import { notFound } from "next/navigation"
 import { ChapterReader } from "@/components/chapter-reader"
 import { getChapter } from "@/lib/scraper"
 
+export const runtime = 'edge'
+
 interface Props {
   params: Promise<{ slug: string; chapter: string }>
 }
