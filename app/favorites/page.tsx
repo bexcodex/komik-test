@@ -1,74 +1,52 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import Image from "next/image"
 import { Heart, Trash2 } from "lucide-react"
-import { Header } from "@/components/header"
+import { useEffect, useState } from "react"
+import { Navbar } from "@/components/navbar"
+import { ComicCard } from "@/components/comic-card"
 import { Button } from "@/components/ui/button"
-import { getFavorites, removeFavorite, type FavoriteComic } from "@/lib/storage"
-import { useToast } from "@/hooks/use-toast"
+import { getFavorites, removeFavorite } from "@/lib/storage"
+import type { FavoriteComic } from "@/lib/types"
 
 export default function FavoritesPage() {
   const [favorites, setFavorites] = useState<FavoriteComic[]>([])
-  const { toast } = useToast()
 
   useEffect(() => {
     setFavorites(getFavorites())
   }, [])
 
-  const handleRemove = (slug: string, title: string) => {
+  const handleRemove = (slug: string) => {
     removeFavorite(slug)
     setFavorites(getFavorites())
-    toast({
-      title: "Removed from favorites",
-      description: `${title} has been removed.`,
-    })
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
-      <main className="container mx-auto max-w-7xl px-4 py-8">
-        <div className="mb-8 flex items-center gap-3">
-          <Heart className="h-8 w-8 text-primary" />
-          <h1 className="text-2xl font-bold">Your Favorites</h1>
-        </div>
+      <Navbar />
+      <main className="mx-auto max-w-5xl px-4 py-6">
+        <h1 className="mb-6 text-xl font-bold">Favorit</h1>
 
         {favorites.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <Heart className="mb-4 h-16 w-16 text-muted-foreground/30" />
-            <h2 className="mb-2 text-xl font-semibold">No favorites yet</h2>
-            <p className="mb-6 text-muted-foreground">Start adding comics to your favorites to see them here</p>
-            <Button asChild>
-              <Link href="/">Browse Comics</Link>
-            </Button>
+          <div className="py-20 text-center">
+            <Heart className="mx-auto mb-3 h-12 w-12 text-muted-foreground/30" />
+            <p className="font-medium">Belum ada favorit</p>
+            <p className="mt-1 text-sm text-muted-foreground">Tambahkan komik ke favorit untuk menyimpannya</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {favorites.map((comic) => (
-              <div key={comic.slug} className="group relative overflow-hidden rounded-lg bg-card">
-                <Link href={`/comic/${comic.slug}`}>
-                  <div className="relative aspect-[3/4]">
-                    <Image
-                      src={comic.thumbnail || "/placeholder.svg?height=400&width=300&query=comic cover"}
-                      alt={comic.title}
-                      fill
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                    />
-                  </div>
-                  <div className="p-3">
-                    <h3 className="line-clamp-2 text-sm font-medium">{comic.title}</h3>
-                  </div>
-                </Link>
+              <div key={comic.slug} className="group relative">
+                <ComicCard comic={comic} />
                 <Button
                   variant="destructive"
                   size="icon"
-                  className="absolute right-2 top-2 h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
-                  onClick={() => handleRemove(comic.slug, comic.title)}
+                  className="absolute right-1.5 top-1.5 h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    handleRemove(comic.slug)
+                  }}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
             ))}

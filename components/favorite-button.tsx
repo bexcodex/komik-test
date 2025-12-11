@@ -1,58 +1,37 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { Heart } from "lucide-react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { isFavorite, addFavorite, removeFavorite } from "@/lib/storage"
-import { useToast } from "@/hooks/use-toast"
-import { cn } from "@/lib/utils"
+import { addFavorite, isFavorite, removeFavorite } from "@/lib/storage"
+import { toast } from "sonner"
 
-interface FavoriteButtonProps {
-  slug: string
-  title: string
-  thumbnail: string
-  variant?: "default" | "icon"
-  className?: string
+interface Props {
+  comic: { slug: string; title: string; thumbnail: string }
 }
 
-export function FavoriteButton({ slug, title, thumbnail, variant = "default", className }: FavoriteButtonProps) {
-  const [isFav, setIsFav] = useState(false)
-  const { toast } = useToast()
+export function FavoriteButton({ comic }: Props) {
+  const [fav, setFav] = useState(false)
 
   useEffect(() => {
-    setIsFav(isFavorite(slug))
-  }, [slug])
+    setFav(isFavorite(comic.slug))
+  }, [comic.slug])
 
-  const toggleFavorite = () => {
-    if (isFav) {
-      removeFavorite(slug)
-      setIsFav(false)
-      toast({
-        title: "Removed from favorites",
-        description: `${title} has been removed from your favorites.`,
-      })
+  const toggle = () => {
+    if (fav) {
+      removeFavorite(comic.slug)
+      setFav(false)
+      toast("Dihapus dari favorit")
     } else {
-      addFavorite({ slug, title, thumbnail })
-      setIsFav(true)
-      toast({
-        title: "Added to favorites",
-        description: `${title} has been added to your favorites.`,
-      })
+      addFavorite(comic)
+      setFav(true)
+      toast("Ditambahkan ke favorit")
     }
   }
 
-  if (variant === "icon") {
-    return (
-      <Button variant="ghost" size="icon" onClick={toggleFavorite} className={cn("h-10 w-10", className)}>
-        <Heart className={cn("h-5 w-5 transition-colors", isFav && "fill-red-500 text-red-500")} />
-      </Button>
-    )
-  }
-
   return (
-    <Button variant={isFav ? "default" : "outline"} onClick={toggleFavorite} className={cn("gap-2", className)}>
-      <Heart className={cn("h-4 w-4", isFav && "fill-current")} />
-      {isFav ? "Favorited" : "Add to Favorites"}
+    <Button variant={fav ? "default" : "outline"} size="icon" onClick={toggle} className="h-9 w-9">
+      <Heart className={`h-4 w-4 ${fav ? "fill-current" : ""}`} />
     </Button>
   )
 }

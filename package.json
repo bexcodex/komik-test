@@ -1,30 +1,22 @@
 {
-  "name": "mangaverse-api",
+  "name": "komiku-reader",
   "version": "1.0.0",
-  "description": "",
-  "keywords": [],
-  "license": "ISC",
-  "author": "",
-  "main": "index.js",
+  "private": true,
   "scripts": {
-    "dev": "nodemon index.js",
-    "start": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "next build",
+    "dev": "next dev",
+    "start": "next start"
   },
   "dependencies": {
-    "@vercel/analytics": "latest",
-    "axios": "latest",
     "cheerio": "latest",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "express": "latest",
-    "express-rate-limit": "latest",
     "lucide-react": "^0.454.0",
     "next": "16.0.8",
+    "next-themes": "latest",
     "react": "19.2.1",
     "react-dom": "19.2.1",
-    "swagger-jsdoc": "latest",
-    "swagger-ui-express": "latest",
+    "sonner": "latest",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "tw-animate-css": "latest"
@@ -33,12 +25,8 @@
     "@types/node": "^22",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
-    "nodemon": "^3.1.10",
     "postcss": "^8.5",
     "tailwindcss": "4.1.17",
     "typescript": "^5"
-  },
-  "engines": {
-    "node": ">=18.x"
   }
 }

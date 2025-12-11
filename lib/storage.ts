@@ -1,19 +1,18 @@
-import type { FavoriteComic, ReadingHistory } from "./types"
+import type { FavoriteComic, HistoryEntry } from "./types"
 
-const FAVORITES_KEY = "komik-favorites"
-const HISTORY_KEY = "komik-history"
+const FAVORITES_KEY = "komiku_favorites"
+const HISTORY_KEY = "komiku_history"
 
 // Favorites
 export function getFavorites(): FavoriteComic[] {
   if (typeof window === "undefined") return []
-  const stored = localStorage.getItem(FAVORITES_KEY)
-  return stored ? JSON.parse(stored) : []
+  const data = localStorage.getItem(FAVORITES_KEY)
+  return data ? JSON.parse(data) : []
 }
 
 export function addFavorite(comic: Omit<FavoriteComic, "addedAt">): void {
   const favorites = getFavorites()
-  const exists = favorites.some((f) => f.slug === comic.slug)
-  if (!exists) {
+  if (!favorites.find((f) => f.slug === comic.slug)) {
     favorites.unshift({ ...comic, addedAt: Date.now() })
     localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites))
   }
@@ -28,38 +27,24 @@ export function isFavorite(slug: string): boolean {
   return getFavorites().some((f) => f.slug === slug)
 }
 
-// Reading History
-export function getHistory(): ReadingHistory[] {
+// History
+export function getHistory(): HistoryEntry[] {
   if (typeof window === "undefined") return []
-  const stored = localStorage.getItem(HISTORY_KEY)
-  return stored ? JSON.parse(stored) : []
+  const data = localStorage.getItem(HISTORY_KEY)
+  return data ? JSON.parse(data) : []
 }
 
-export function addToHistory(entry: Omit<ReadingHistory, "readAt">): void {
+export function addToHistory(entry: Omit<HistoryEntry, "readAt">): void {
   let history = getHistory()
-  // Remove existing entry for same chapter
-  history = history.filter((h) => !(h.comicSlug === entry.comicSlug && h.chapterSlug === entry.chapterSlug))
+  // Remove existing entry for same comic
+  history = history.filter((h) => h.comicSlug !== entry.comicSlug)
   // Add new entry at the beginning
   history.unshift({ ...entry, readAt: Date.now() })
-  // Keep only last 100 entries
-  history = history.slice(0, 100)
+  // Keep only last 50 entries
+  history = history.slice(0, 50)
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history))
-}
-
-export function updateHistoryProgress(comicSlug: string, chapterSlug: string, progress: number): void {
-  const history = getHistory()
-  const index = history.findIndex((h) => h.comicSlug === comicSlug && h.chapterSlug === chapterSlug)
-  if (index !== -1) {
-    history[index].progress = progress
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history))
-  }
 }
 
 export function clearHistory(): void {
   localStorage.setItem(HISTORY_KEY, JSON.stringify([]))
-}
-
-export function getLastReadChapter(comicSlug: string): ReadingHistory | null {
-  const history = getHistory()
-  return history.find((h) => h.comicSlug === comicSlug) || null
 }

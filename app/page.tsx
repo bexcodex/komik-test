@@ -1,66 +1,99 @@
 import { Suspense } from "react"
-import { Header } from "@/components/header"
-import { ComicGrid } from "@/components/comic-grid"
-import { SkeletonGrid } from "@/components/skeleton-card"
-import { getRecommendations, getPopularComics, getColoredComics } from "@/lib/api"
+import Link from "next/link"
+import { Search } from "lucide-react"
+import { Navbar } from "@/components/navbar"
+import { ComicCard } from "@/components/comic-card"
+import { Skeleton } from "@/components/ui/skeleton"
+import { getRecommendations, getPopular } from "@/lib/scraper"
 
-async function RecommendedComics() {
+function GridSkeleton({ count = 10 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="space-y-2">
+          <Skeleton className="aspect-[3/4] w-full rounded-lg" />
+          <Skeleton className="h-4 w-3/4" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+async function RecommendedSection() {
   const comics = await getRecommendations()
-  return <ComicGrid comics={comics} title="Recommended for You" priority />
+  if (!comics.length) return null
+  return (
+    <section>
+      <h2 className="mb-3 text-base font-semibold">Rekomendasi</h2>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        {comics.slice(0, 10).map((comic) => (
+          <ComicCard key={comic.slug} comic={comic} />
+        ))}
+      </div>
+    </section>
+  )
 }
 
-async function PopularComics() {
-  const comics = await getPopularComics()
-  return <ComicGrid comics={comics} title="Popular Comics" />
-}
-
-async function ColoredComics() {
-  const comics = await getColoredComics()
-  return <ComicGrid comics={comics} title="Full Color Comics" />
+async function PopularSection() {
+  const data = await getPopular()
+  return (
+    <>
+      {data.manga?.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-base font-semibold">Manga Populer</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {data.manga.slice(0, 10).map((comic) => (
+              <ComicCard key={comic.slug} comic={comic} />
+            ))}
+          </div>
+        </section>
+      )}
+      {data.manhwa?.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-base font-semibold">Manhwa Populer</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {data.manhwa.slice(0, 10).map((comic) => (
+              <ComicCard key={comic.slug} comic={comic} />
+            ))}
+          </div>
+        </section>
+      )}
+      {data.manhua?.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-base font-semibold">Manhua Populer</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {data.manhua.slice(0, 10).map((comic) => (
+              <ComicCard key={comic.slug} comic={comic} />
+            ))}
+          </div>
+        </section>
+      )}
+    </>
+  )
 }
 
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
-      <Header />
-      <main className="container mx-auto max-w-7xl space-y-10 px-4 py-8">
-        {/* Hero Section */}
-        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/20 via-background to-accent/10 p-8 md:p-12">
-          <div className="relative z-10 max-w-2xl">
-            <h1 className="text-3xl font-bold tracking-tight md:text-4xl lg:text-5xl">
-              Your Ultimate <span className="text-primary">Comic Reading</span> Experience
-            </h1>
-            <p className="mt-4 text-muted-foreground md:text-lg">
-              Discover thousands of manga, manhwa, and manhua. Read your favorites with auto-scroll, track your
-              progress, and never miss a chapter.
-            </p>
+      <Navbar />
+      <main className="mx-auto max-w-5xl space-y-8 px-4 py-6">
+        <Link href="/cari" className="block">
+          <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent">
+            <Search className="h-5 w-5" />
+            <span>Cari komik...</span>
           </div>
-          <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
-          <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-accent/10 blur-3xl" />
-        </section>
+        </Link>
 
-        {/* Recommended Comics */}
-        <Suspense fallback={<SkeletonGrid count={12} />}>
-          <RecommendedComics />
+        <Suspense fallback={<GridSkeleton />}>
+          <RecommendedSection />
         </Suspense>
 
-        {/* Popular Comics */}
-        <Suspense fallback={<SkeletonGrid count={12} />}>
-          <PopularComics />
-        </Suspense>
-
-        {/* Full Color Comics */}
-        <Suspense fallback={<SkeletonGrid count={12} />}>
-          <ColoredComics />
+        <Suspense fallback={<GridSkeleton />}>
+          <PopularSection />
         </Suspense>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border bg-card py-8">
-        <div className="container mx-auto max-w-7xl px-4 text-center text-sm text-muted-foreground">
-          <p>KomikReader - Read your favorite comics online</p>
-        </div>
-      </footer>
+      <footer className="border-t border-border py-6 text-center text-sm text-muted-foreground">Komiku Reader</footer>
     </div>
   )
 }

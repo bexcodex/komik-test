@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation"
 import { ChapterReader } from "@/components/chapter-reader"
-import { getChapter } from "@/lib/api"
+import { getChapter } from "@/lib/scraper"
 
-interface ReadPageProps {
+interface Props {
   params: Promise<{ slug: string; chapter: string }>
 }
 
-export default async function ReadPage({ params }: ReadPageProps) {
+export default async function ReadPage({ params }: Props) {
   const { slug, chapter } = await params
 
   let data
@@ -16,9 +16,7 @@ export default async function ReadPage({ params }: ReadPageProps) {
     notFound()
   }
 
-  if (!data || !data.images || data.images.length === 0) {
-    notFound()
-  }
+  if (!data?.images?.length) notFound()
 
-  return <ChapterReader data={data} />
+  return <ChapterReader data={data} slug={slug} chapter={chapter} />
 }

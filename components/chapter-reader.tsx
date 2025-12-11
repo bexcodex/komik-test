@@ -1,322 +1,216 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, ChevronRight, Settings, Play, Pause, Home, List, ArrowUp } from "lucide-react"
+import { ArrowLeft, ChevronLeft, ChevronRight, Pause, Play, Settings, X } from "lucide-react"
+import { useEffect, useRef, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { addToHistory } from "@/lib/storage"
 import type { ChapterData } from "@/lib/types"
-import { addToHistory, updateHistoryProgress } from "@/lib/storage"
-import { cn } from "@/lib/utils"
 
-interface ChapterReaderProps {
+interface Props {
   data: ChapterData
+  slug: string
+  chapter: string
 }
 
-export function ChapterReader({ data }: ChapterReaderProps) {
+export function ChapterReader({ data, slug, chapter }: Props) {
   const router = useRouter()
   const containerRef = useRef<HTMLDivElement>(null)
-  const [showControls, setShowControls] = useState(true)
+  const [showUI, setShowUI] = useState(true)
+  const [showSettings, setShowSettings] = useState(false)
   const [autoScroll, setAutoScroll] = useState(false)
-  const [scrollSpeed, setScrollSpeed] = useState(50)
-  const [progress, setProgress] = useState(0)
-  const [showBackToTop, setShowBackToTop] = useState(false)
-  const autoScrollRef = useRef<number | null>(null)
-  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [speed, setSpeed] = useState(1)
+  const [current, setCurrent] = useState(1)
+  const scrollRef = useRef<number | null>(null)
 
-  // Add to history on mount
   useEffect(() => {
-    if (data.mangaInfo.slug && data.meta.chapterNumber) {
-      addToHistory({
-        comicSlug: data.mangaInfo.slug,
-        comicTitle: data.mangaInfo.title,
-        comicThumbnail: "",
-        chapterSlug: data.meta.slug,
-        chapterNumber: data.meta.chapterNumber,
-        chapterTitle: data.title,
-        progress: 0,
-      })
-    }
-  }, [data])
+    addToHistory({
+      comicSlug: data.mangaInfo.slug,
+      comicTitle: data.mangaInfo.title,
+      thumbnail: "",
+      chapterNumber: chapter,
+      chapterSlug: slug,
+    })
+  }, [data.mangaInfo, chapter, slug])
 
-  // Track scroll progress
   useEffect(() => {
-    const handleScroll = () => {
-      const scrollTop = window.scrollY
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight
-      const currentProgress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0
-      setProgress(currentProgress)
-      setShowBackToTop(scrollTop > 500)
-
-      // Update history progress
-      if (data.mangaInfo.slug && data.meta.slug) {
-        updateHistoryProgress(data.mangaInfo.slug, data.meta.slug, currentProgress)
-      }
-    }
-
-    window.addEventListener("scroll", handleScroll, { passive: true })
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [data.mangaInfo.slug, data.meta.slug])
-
-  // Auto-scroll functionality
-  useEffect(() => {
-    if (autoScroll) {
+    if (autoScroll && containerRef.current) {
       const scroll = () => {
-        window.scrollBy({ top: 1, behavior: "auto" })
-        autoScrollRef.current = requestAnimationFrame(scroll)
-      }
-
-      const intervalId = setInterval(() => {
-        if (autoScrollRef.current) {
-          cancelAnimationFrame(autoScrollRef.current)
-        }
-        autoScrollRef.current = requestAnimationFrame(scroll)
-      }, 100 - scrollSpeed)
-
-      return () => {
-        clearInterval(intervalId)
-        if (autoScrollRef.current) {
-          cancelAnimationFrame(autoScrollRef.current)
+        if (containerRef.current) {
+          containerRef.current.scrollTop += speed
+          scrollRef.current = requestAnimationFrame(scroll)
         }
       }
-    } else {
-      if (autoScrollRef.current) {
-        cancelAnimationFrame(autoScrollRef.current)
-      }
+      scrollRef.current = requestAnimationFrame(scroll)
+    } else if (scrollRef.current) {
+      cancelAnimationFrame(scrollRef.current)
     }
-  }, [autoScroll, scrollSpeed])
-
-  // Auto-advance to next chapter
-  useEffect(() => {
-    if (progress >= 98 && data.navigation.nextChapter && autoScroll) {
-      setAutoScroll(false)
-      const timer = setTimeout(() => {
-        router.push(data.navigation.nextChapter!.apiLink.replace("/baca-chapter/", "/read/"))
-      }, 2000)
-      return () => clearTimeout(timer)
-    }
-  }, [progress, data.navigation.nextChapter, autoScroll, router])
-
-  // Hide controls after inactivity
-  const resetControlsTimeout = useCallback(() => {
-    setShowControls(true)
-    if (controlsTimeoutRef.current) {
-      clearTimeout(controlsTimeoutRef.current)
-    }
-    controlsTimeoutRef.current = setTimeout(() => {
-      if (!autoScroll) return
-      setShowControls(false)
-    }, 3000)
-  }, [autoScroll])
-
-  useEffect(() => {
-    const handleMouseMove = () => resetControlsTimeout()
-    const handleTouch = () => resetControlsTimeout()
-
-    window.addEventListener("mousemove", handleMouseMove)
-    window.addEventListener("touchstart", handleTouch)
-
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove)
-      window.removeEventListener("touchstart", handleTouch)
-      if (controlsTimeoutRef.current) {
-        clearTimeout(controlsTimeoutRef.current)
-      }
+      if (scrollRef.current) cancelAnimationFrame(scrollRef.current)
     }
-  }, [resetControlsTimeout])
+  }, [autoScroll, speed])
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" })
+  const handleScroll = useCallback(() => {
+    if (!containerRef.current) return
+    const c = containerRef.current
+    const itemH = c.scrollHeight / data.images.length
+    const cur = Math.floor(c.scrollTop / itemH) + 1
+    setCurrent(Math.min(cur, data.images.length))
+  }, [data.images.length])
+
+  const goPrev = () => {
+    if (data.navigation.prevChapter) {
+      router.push(`/baca/${data.navigation.prevChapter.slug}/${data.navigation.prevChapter.chapter}`)
+    }
+  }
+
+  const goNext = () => {
+    if (data.navigation.nextChapter) {
+      router.push(`/baca/${data.navigation.nextChapter.slug}/${data.navigation.nextChapter.chapter}`)
+    }
   }
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-background">
-      {/* Progress bar */}
-      <div className="fixed left-0 right-0 top-0 z-50 h-1 bg-secondary">
-        <div className="h-full bg-primary transition-all duration-150" style={{ width: `${progress}%` }} />
-      </div>
-
-      {/* Top Controls */}
+    <div className="fixed inset-0 z-50 bg-black">
+      {/* Top Bar */}
       <div
-        className={cn(
-          "fixed left-0 right-0 top-1 z-40 transition-transform duration-300",
-          showControls ? "translate-y-0" : "-translate-y-full",
-        )}
+        className={`fixed inset-x-0 top-0 z-50 bg-gradient-to-b from-black/70 to-transparent p-3 transition-transform duration-200 ${showUI ? "translate-y-0" : "-translate-y-full"}`}
       >
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-2 bg-background/95 px-4 py-2 backdrop-blur">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href={`/comic/${data.mangaInfo.slug}`}>
-                <ChevronLeft className="h-5 w-5" />
-              </Link>
-            </Button>
+            <Link href={`/komik/${data.mangaInfo.slug}`}>
+              <Button variant="ghost" size="icon" className="h-9 w-9 text-white hover:bg-white/10">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            </Link>
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{data.mangaInfo.title}</p>
-              <p className="text-xs text-muted-foreground">Chapter {data.meta.chapterNumber}</p>
+              <p className="truncate text-sm font-medium text-white">{data.mangaInfo.title}</p>
+              <p className="text-xs text-white/60">Chapter {chapter}</p>
             </div>
           </div>
-
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setAutoScroll(!autoScroll)}
-              className={cn(autoScroll && "text-primary")}
-            >
-              {autoScroll ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
-            </Button>
-
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Settings className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent>
-                <SheetHeader>
-                  <SheetTitle>Reader Settings</SheetTitle>
-                </SheetHeader>
-                <div className="mt-6 space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Auto-Scroll Speed</label>
-                    <Slider
-                      value={[scrollSpeed]}
-                      onValueChange={([value]) => setScrollSpeed(value)}
-                      min={10}
-                      max={90}
-                      step={10}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {scrollSpeed < 30 ? "Slow" : scrollSpeed < 60 ? "Medium" : "Fast"}
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Reading Progress</label>
-                    <p className="text-2xl font-bold text-primary">{Math.round(progress)}%</p>
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
-          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 text-white hover:bg-white/10"
+            onClick={() => setShowSettings(!showSettings)}
+          >
+            <Settings className="h-5 w-5" />
+          </Button>
         </div>
       </div>
+
+      {/* Settings */}
+      {showSettings && (
+        <div className="fixed right-3 top-16 z-50 w-64 rounded-lg bg-card p-4 shadow-lg">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="font-medium">Pengaturan</span>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowSettings(false)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Auto Scroll</span>
+              <Button size="sm" variant={autoScroll ? "default" : "outline"} onClick={() => setAutoScroll(!autoScroll)}>
+                {autoScroll ? <Pause className="mr-1 h-3 w-3" /> : <Play className="mr-1 h-3 w-3" />}
+                {autoScroll ? "Stop" : "Start"}
+              </Button>
+            </div>
+            {autoScroll && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Kecepatan</span>
+                  <span className="text-muted-foreground">{speed}x</span>
+                </div>
+                <Slider value={[speed]} min={0.5} max={5} step={0.5} onValueChange={([v]) => setSpeed(v)} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Images */}
-      <div className="mx-auto max-w-3xl px-0 pb-24 pt-16 sm:px-4">
-        {data.images.map((image, index) => (
-          <div key={image.id || index} className="relative w-full">
-            <Image
-              src={image.src || "/placeholder.svg"}
-              alt={image.alt || `Page ${index + 1}`}
-              width={800}
-              height={1200}
-              className="h-auto w-full"
-              priority={index < 3}
-              loading={index < 3 ? "eager" : "lazy"}
-              unoptimized
-            />
-          </div>
-        ))}
+      <div
+        ref={containerRef}
+        className="h-full overflow-y-auto"
+        onClick={() => !showSettings && setShowUI((p) => !p)}
+        onScroll={handleScroll}
+      >
+        <div className="mx-auto max-w-3xl">
+          {data.images.map((img, i) => (
+            <div key={img.id || i} className="w-full">
+              <Image
+                src={img.src || "/placeholder.svg"}
+                alt={img.alt || `Page ${i + 1}`}
+                width={800}
+                height={1200}
+                className="w-full"
+                priority={i < 3}
+                unoptimized
+              />
+            </div>
+          ))}
 
-        {/* End of chapter */}
-        <div className="mt-8 space-y-4 px-4 text-center">
-          <p className="text-muted-foreground">End of Chapter {data.meta.chapterNumber}</p>
-          <div className="flex flex-wrap justify-center gap-3">
-            {data.navigation.prevChapter && (
-              <Button variant="outline" asChild>
-                <Link href={data.navigation.prevChapter.apiLink.replace("/baca-chapter/", "/read/")}>
+          {/* End */}
+          <div className="flex flex-col items-center gap-4 bg-background p-8">
+            <p className="text-sm text-muted-foreground">Akhir Chapter {chapter}</p>
+            <div className="flex gap-2">
+              {data.navigation.prevChapter && (
+                <Button variant="outline" size="sm" onClick={goPrev}>
                   <ChevronLeft className="mr-1 h-4 w-4" />
-                  Previous
-                </Link>
-              </Button>
-            )}
-            <Button variant="outline" asChild>
-              <Link href={`/comic/${data.mangaInfo.slug}`}>
-                <List className="mr-1 h-4 w-4" />
-                All Chapters
-              </Link>
-            </Button>
-            {data.navigation.nextChapter && (
-              <Button asChild>
-                <Link href={data.navigation.nextChapter.apiLink.replace("/baca-chapter/", "/read/")}>
+                  Prev
+                </Button>
+              )}
+              {data.navigation.nextChapter && (
+                <Button size="sm" onClick={goNext}>
                   Next
                   <ChevronRight className="ml-1 h-4 w-4" />
-                </Link>
-              </Button>
-            )}
+                </Button>
+              )}
+            </div>
+            <Link
+              href={`/komik/${data.mangaInfo.slug}`}
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              Daftar Chapter
+            </Link>
           </div>
         </div>
       </div>
 
-      {/* Bottom Navigation */}
+      {/* Bottom Bar */}
       <div
-        className={cn(
-          "fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur transition-transform duration-300",
-          showControls ? "translate-y-0" : "translate-y-full",
-        )}
+        className={`fixed inset-x-0 bottom-0 z-50 bg-gradient-to-t from-black/70 to-transparent p-3 transition-transform duration-200 ${showUI ? "translate-y-0" : "translate-y-full"}`}
       >
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
+        <div className="flex items-center justify-between">
           <Button
             variant="ghost"
             size="sm"
+            className="text-white hover:bg-white/10 disabled:opacity-30"
             disabled={!data.navigation.prevChapter}
-            asChild={!!data.navigation.prevChapter}
+            onClick={goPrev}
           >
-            {data.navigation.prevChapter ? (
-              <Link href={data.navigation.prevChapter.apiLink.replace("/baca-chapter/", "/read/")}>
-                <ChevronLeft className="mr-1 h-4 w-4" />
-                Prev
-              </Link>
-            ) : (
-              <>
-                <ChevronLeft className="mr-1 h-4 w-4" />
-                Prev
-              </>
-            )}
+            <ChevronLeft className="mr-1 h-4 w-4" />
+            Prev
           </Button>
-
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/">
-              <Home className="h-4 w-4" />
-            </Link>
-          </Button>
-
+          <span className="text-sm text-white">
+            {current} / {data.images.length}
+          </span>
           <Button
             variant="ghost"
             size="sm"
+            className="text-white hover:bg-white/10 disabled:opacity-30"
             disabled={!data.navigation.nextChapter}
-            asChild={!!data.navigation.nextChapter}
+            onClick={goNext}
           >
-            {data.navigation.nextChapter ? (
-              <Link href={data.navigation.nextChapter.apiLink.replace("/baca-chapter/", "/read/")}>
-                Next
-                <ChevronRight className="ml-1 h-4 w-4" />
-              </Link>
-            ) : (
-              <>
-                Next
-                <ChevronRight className="ml-1 h-4 w-4" />
-              </>
-            )}
+            Next
+            <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
         </div>
       </div>
-
-      {/* Back to top */}
-      {showBackToTop && (
-        <Button
-          variant="secondary"
-          size="icon"
-          className="fixed bottom-20 right-4 z-40 rounded-full shadow-lg"
-          onClick={scrollToTop}
-        >
-          <ArrowUp className="h-5 w-5" />
-        </Button>
-      )}
     </div>
   )
 }
